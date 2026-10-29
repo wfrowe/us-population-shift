@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Deploy on every push to the main branch
+  push:
+    branches: [main]
+  # Also allow running it by hand from the Actions tab
+  workflow_dispatch:
+
+# Permissions needed to deploy to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    # Skip in the template repo itself. Projects created from it are not templates, so they deploy.
+    if: ${{ !github.event.repository.is_template }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out your repository using git
+        uses: actions/checkout@v7
+      - name: Install, build, and upload your site
+        uses: withastro/action@v6
+        with:
+          path: ./site # the Astro project lives in the site/ folder
+        env:
+          # Publishes at https://wfrowe.github.io/<repo-name>/ with no edits needed.
+          BASE_PATH: /${{ github.event.repository.name }}
+          PUBLIC_REPO_URL: https://github.com/${{ github.repository }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

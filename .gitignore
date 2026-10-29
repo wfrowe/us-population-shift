@@ -1,0 +1,36 @@
+# --- Raw data: stays on this computer, never committed ---
+# Only data/processed/ is committed. (Raw files can contain personal data.)
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*secret*
+*credentials*
+
+# --- Python ---
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# --- Site (Astro) ---
+site/node_modules/
+site/dist/
+site/.astro/
+# Copied from data/processed/ by site/scripts/sync-data.mjs on every build
+site/public/data/
+
+# --- Editors and OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,34 @@
+---
+import Project from '../layouts/Project.astro';
+import LineChart from '../components/LineChart.astro';
+import PointMap from '../components/PointMap.astro';
+import { project } from '../project.config';
+---
+
+<Project>
+	<h1>{project.title}</h1>
+	<p class="lead">{project.summary}</p>
+
+	<p class="note">
+		<strong>Example page.</strong> The numbers below are made up. They show what the template can do. Replace this text, the data in{' '}
+		<code>data/processed/</code>, and the title in <code>site/src/project.config.ts</code>.
+	</p>
+
+	<h2>The question</h2>
+	<p>State the question in one or two sentences. Say why it matters to a reader who has never seen the data.</p>
+
+	<h2>The short answer</h2>
+	<p>Give the answer first, with the number that supports it. Details come after.</p>
+
+	<h2>Over time</h2>
+	<LineChart file="series.csv" label="Line chart of an example value for six cities from 2019 to 2024" />
+
+	<h2>By place</h2>
+	<PointMap file="points.geojson" label="Map of six example cities. Circle size shows change since 2019" />
+
+	<h2>How I got these numbers</h2>
+	<p>Name the source, the date you got the data, and each step you took to clean it. Someone should be able to repeat your work.</p>
+
+	<h2>What this does not show</h2>
+	<p>List the limits: what the data misses, what could be wrong, and what you would check next.</p>
+</Project>

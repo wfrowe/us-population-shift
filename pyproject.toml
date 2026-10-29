@@ -1,0 +1,16 @@
+[project]
+name = "project-template"
+version = "0.1.0"
+description = "Template for a data project: Python for the data, Astro for the page."
+readme = "README.md"
+# Native ARM64 Python 3.14 (also pinned in .python-version).
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "pandas>=3.1",
+]
+
+[dependency-groups]
+dev = [
+    "jupyterlab>=4",
+    "nbstripout>=0.9",
+]

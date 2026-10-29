@@ -1,0 +1,24 @@
+{
+  "name": "site",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "sync-data": "node scripts/sync-data.mjs",
+    "predev": "npm run sync-data",
+    "dev": "astro dev",
+    "prebuild": "npm run sync-data",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@observablehq/plot": "^0.6.17",
+    "astro": "^7.4.4",
+    "d3-dsv": "^3.0.1",
+    "maplibre-gl": "^6.16.0"
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -84.39,
+          33.75
+        ]
+      },
+      "properties": {
+        "city": "Atlanta",
+        "latest": 132.1,
+        "change": 30.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -97.74,
+          30.27
+        ]
+      },
+      "properties": {
+        "city": "Austin",
+        "latest": 149.2,
+        "change": 49.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.06,
+          42.36
+        ]
+      },
+      "properties": {
+        "city": "Boston",
+        "latest": 139.6,
+        "change": 40.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.63,
+          41.88
+        ]
+      },
+      "properties": {
+        "city": "Chicago",
+        "latest": 126.5,
+        "change": 28.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -104.99,
+          39.74
+        ]
+      },
+      "properties": {
+        "city": "Denver",
+        "latest": 116.7,
+        "change": 19.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.33,
+          47.61
+        ]
+      },
+      "properties": {
+        "city": "Seattle",
+        "latest": 105.2,
+        "change": 4.4
+      }
+    }
+  ]
+}

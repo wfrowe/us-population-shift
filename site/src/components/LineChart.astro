@@ -1,0 +1,56 @@
+---
+// Interactive line chart (Observable Plot). Hover to read exact values.
+// Reads a CSV with columns: city, month, value. Change the column names in the
+// script below to match your own data.
+interface Props {
+	file: string; // file name inside data/processed, e.g. "series.csv"
+	label: string; // plain description for screen readers
+}
+
+const { file, label } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const src = `${base}/data/${file}`;
+---
+
+<figure class="chart-figure">
+	<div class="chart" data-src={src} role="img" aria-label={label}></div>
+	<figcaption>
+		Hover or tap a line for exact values. <a href={src}>Download the data (CSV)</a>.
+	</figcaption>
+</figure>
+
+<script>
+	import * as Plot from '@observablehq/plot';
+	import { csvParse, autoType } from 'd3-dsv';
+
+	document.querySelectorAll<HTMLElement>('.chart[data-src]').forEach(async (el) => {
+		const rows = csvParse(await (await fetch(el.dataset.src!)).text(), autoType);
+
+		const draw = () => {
+			const chart = Plot.plot({
+				width: el.clientWidth,
+				height: 360,
+				style: { background: 'var(--bg)', color: 'var(--text)' },
+				marginRight: 20,
+				x: { label: null },
+				y: { label: 'Value', grid: true },
+				color: { legend: true },
+				marks: [
+					Plot.lineY(rows, { x: 'month', y: 'value', stroke: 'city', strokeWidth: 1.5 }),
+					Plot.tip(rows, Plot.pointer({ x: 'month', y: 'value', stroke: 'city' })),
+				],
+			});
+			el.replaceChildren(chart);
+		};
+
+		draw();
+		// Redraw when the width changes (rotating a phone, resizing the window).
+		let lastWidth = el.clientWidth;
+		new ResizeObserver(() => {
+			if (el.clientWidth !== lastWidth) {
+				lastWidth = el.clientWidth;
+				draw();
+			}
+		}).observe(el);
+	});
+</script>

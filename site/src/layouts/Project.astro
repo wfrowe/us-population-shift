@@ -1,0 +1,32 @@
+---
+import '../styles/global.css';
+import { project, repoUrl } from '../project.config';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="description" content={project.summary} />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+		<title>{project.title} | Wilson Rowe</title>
+	</head>
+	<body>
+		<header class="site-header">
+			<a class="site-name" href="https://wfrowe.github.io/">Wilson Rowe</a>
+			<nav aria-label="Main">
+				<a href="https://wfrowe.github.io/projects/">All projects</a>
+			</nav>
+		</header>
+		<main>
+			<slot />
+		</main>
+		<footer class="site-footer">
+			<a href={repoUrl}>Code and data on GitHub</a>
+		</footer>
+	</body>
+</html>
