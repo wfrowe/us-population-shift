@@ -1,7 +1,6 @@
 ---
 import Project from '../layouts/Project.astro';
-import LineChart from '../components/LineChart.astro';
-import PointMap from '../components/PointMap.astro';
+import Explorer from '../components/Explorer.astro';
 import { project } from '../project.config';
 ---
 
@@ -9,26 +8,101 @@ import { project } from '../project.config';
 	<h1>{project.title}</h1>
 	<p class="lead">{project.summary}</p>
 
-	<p class="note">
-		<strong>Example page.</strong> The numbers below are made up. They show what the template can do. Replace this text, the data in{' '}
-		<code>data/processed/</code>, and the title in <code>site/src/project.config.ts</code>.
-	</p>
-
 	<h2>The question</h2>
-	<p>State the question in one or two sentences. Say why it matters to a reader who has never seen the data.</p>
+	<p>Which US states gained or lost population between 2010 and 2025, and by how much?</p>
 
 	<h2>The short answer</h2>
-	<p>Give the answer first, with the number that supports it. Details come after.</p>
+	<ul>
+		<li>The US grew 10.5%, from 309.3 million to 341.8 million people.</li>
+		<li>Idaho (+29.2%), Utah (+27.5%), Texas (+25.6%) and Florida (+24.5%) grew fastest.</li>
+		<li>Texas and Florida alone added 11.1 million people, about a third of the net national gain.</li>
+		<li>California is still the largest state, but at +5.5% it grew about half as fast as the country.</li>
+		<li>Only three states shrank: West Virginia (&minus;4.8%), Illinois (about &minus;1%) and Mississippi (about &minus;0.5%).</li>
+	</ul>
 
-	<h2>Over time</h2>
-	<LineChart file="series.csv" label="Line chart of an example value for six cities from 2019 to 2024" />
-
-	<h2>By place</h2>
-	<PointMap file="points.geojson" label="Map of six example cities. Circle size shows change since 2019" />
+	<h2>Explore it</h2>
+	<p>
+		Move the year slider, or press Play, to see the map and the ranking change. Pick states to compare in the trend chart. The table at the
+		bottom has every number.
+	</p>
+	<Explorer />
 
 	<h2>How I got these numbers</h2>
-	<p>Name the source, the date you got the data, and each step you took to clean it. Someone should be able to repeat your work.</p>
+	<ol>
+		<li>Downloaded two official files from the US Census Bureau (see the table below), on 2026-10-29.</li>
+		<li>Kept the 50 states and the District of Columbia. Dropped Puerto Rico, which the Census does not count in the US total.</li>
+		<li>Used the 2010&ndash;2019 release for 2010&ndash;2019, and the 2020&ndash;2025 release for 2020&ndash;2025. All figures are July 1 estimates.</li>
+		<li>Calculated growth as each year's population divided by the 2010 population, minus one.</li>
+		<li>Checked that the 51 state figures add up to the Census's own US total, in all 16 years. They do.</li>
+	</ol>
 
-	<h2>What this does not show</h2>
-	<p>List the limits: what the data misses, what could be wrong, and what you would check next.</p>
+	<h2>Limits</h2>
+	<ul>
+		<li>
+			<strong>The two releases do not line up.</strong> The 2020&ndash;2025 estimates start from the 2020 Census count. The US total in that release
+			begins at 331.5 million, 1.0% above the older release's 2019 estimate of 328.2 million. For individual states the gap runs from +4.6% (New
+			Jersey) to &minus;2.3% (District of Columbia). A change across the dashed line is partly a method change, not only people moving. Treat small
+			gaps between states with care.
+		</li>
+		<li>These are estimates, not head counts. The Census revises them with each release.</li>
+		<li>The page shows how many people live in each state, not why. It does not separate births, deaths and moves between states.</li>
+		<li>The map outlines are simplified for display, so small borders are approximate. Alaska's Aleutian Islands are shifted to keep the state in one piece.</li>
+		<li>The map stays light-colored when your device is in dark mode.</li>
+	</ul>
+
+	<h2>Data</h2>
+	<div class="table-wrap-static">
+		<table class="sources">
+			<thead>
+				<tr><th>Dataset</th><th>Source</th><th>Retrieved</th></tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>State population estimates, 2010&ndash;2019</td>
+					<td>
+						US Census Bureau,
+						<a href="https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/national/totals/nst-est2019-alldata.csv">nst-est2019-alldata.csv</a>
+					</td>
+					<td>2026-10-29</td>
+				</tr>
+				<tr>
+					<td>State population estimates, 2020&ndash;2025</td>
+					<td>
+						US Census Bureau,
+						<a href="https://www2.census.gov/programs-surveys/popest/datasets/2020-2025/state/totals/NST-EST2025-ALLDATA.csv">NST-EST2025-ALLDATA.csv</a>
+					</td>
+					<td>2026-10-29</td>
+				</tr>
+				<tr>
+					<td>State outlines (1:20,000,000)</td>
+					<td>
+						US Census Bureau,
+						<a href="https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_state_20m.zip">cb_2024_us_state_20m.zip</a>
+					</td>
+					<td>2026-10-29</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+	<p>
+		Cleaned files are in the repository under <code>data/processed/</code>. Basemap: OpenFreeMap, &copy; OpenMapTiles, data from OpenStreetMap.
+	</p>
 </Project>
+
+<style is:global>
+	.table-wrap-static {
+		overflow-x: auto;
+	}
+	table.sources {
+		border-collapse: collapse;
+		width: 100%;
+		font-size: 0.9rem;
+	}
+	table.sources th,
+	table.sources td {
+		text-align: left;
+		padding: 0.4rem 0.7rem 0.4rem 0;
+		border-bottom: 1px solid var(--line);
+		vertical-align: top;
+	}
+</style>

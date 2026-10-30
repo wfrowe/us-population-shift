@@ -1,50 +1,51 @@
-# Project template
+# Where US population has grown since 2010
 
-Starter for a small data project: Python prepares the data, an Astro page shows it, and GitHub publishes it at `https://wfrowe.github.io/<repo-name>/`.
+The US added 32.5 million people from 2010 to 2025. About half of that net gain went to five states: Texas, Florida, California, North Carolina and Georgia.
 
-The page you get out of the box has a made-up example: an interactive line chart and a zoomable map. Replace the example with your own question.
+**Live page:** https://wfrowe.github.io/us-population-shift/
 
-Live example: https://wfrowe.github.io/project-template/
+Interactive: a year slider, a state map, a ranking for any year, and a trend chart for states you pick.
 
-## How the pieces connect
+## The question
+Which US states gained or lost population between 2010 and 2025, and by how much?
 
+## The short answer
+- The US grew 10.5%, from 309.3 million to 341.8 million.
+- Fastest: Idaho +29.2%, Utah +27.5%, Texas +25.6%, Florida +24.5%.
+- Only three states shrank: West Virginia, Illinois, Mississippi.
+
+## Data
+| Dataset | Source | Date retrieved |
+|---|---|---|
+| State population estimates, 2010-2019 | US Census Bureau, `nst-est2019-alldata.csv` | 2026-10-29 |
+| State population estimates, 2020-2025 | US Census Bureau, `NST-EST2025-ALLDATA.csv` | 2026-10-29 |
+| State outlines, 1:20,000,000 | US Census Bureau, `cb_2024_us_state_20m.zip` | 2026-10-29 |
+
+Download URLs are in `src/build_data.py` and on the live page. Raw files go in `data/raw/` (not committed). Terms: I did not find an explicit license statement on the Census download pages. The Census Bureau's open-data page asks for citation, which this project does.
+
+## Method
+1. Keep the 50 states and DC. Drop Puerto Rico (not in the Census US total).
+2. Use the 2010-2019 release for 2010-2019 and the 2020-2025 release for 2020-2025 (July 1 estimates).
+3. Growth = population / 2010 population - 1.
+4. Check: the 51 state values add up to the Census US total in all 16 years (the script stops if not).
+
+## Limits
+- The two releases do not line up at 2020. The newer one starts from the 2020 Census count, 1.0% above the older 2019 estimate for the US, and from +4.6% (New Jersey) to -2.3% (DC) for states. `data/processed/seam.csv` has every state.
+- Estimates, not head counts. They are revised with each release.
+- Totals only. No births, deaths or migration.
+- Map outlines are simplified. Alaska's Aleutian Islands are shifted to keep the state in one piece.
+
+## Run it yourself
 ```
-data/raw/  --(src/*.py)-->  data/processed/  --(site/scripts/sync-data.mjs)-->  site/public/data/
- local only                  committed                                              copy, git-ignored
-                                                                                         |
-                                       push to main --> GitHub Actions builds site/ --> live page
-```
-
-- Python reads raw data and writes small, clean files to `data/processed/`.
-- Astro copies those files into the site, and charts and maps load them in the visitor's browser.
-- Every push to `main` rebuilds and publishes the page.
-
-## Start a new project
-
-1. On GitHub, click **Use this template** (or run `gh repo create wfrowe/<name> --template wfrowe/project-template --public --clone`).
-2. In the new repo, turn on Pages with the GitHub Actions source:
-   `gh api -X POST repos/wfrowe/<name>/pages -f build_type=workflow`
-3. Set the title and summary in `site/src/project.config.ts`.
-4. Replace `README.md` with `README.template.md`, filled in.
-5. Replace `src/make_sample_data.py` with your own script. Put downloads in `data/raw/`, write clean files to `data/processed/`.
-6. Edit `site/src/pages/index.astro` and the two components to match your data.
-7. Commit and push. The page is live about a minute later.
-
-## Run it on your computer
-
-```
-uv sync                                   # install Python packages
-uv run python src/make_sample_data.py     # make the example data
+uv sync
+uv run python src/build_data.py      # raw -> data/processed
 cd site
-npm install                               # first time only
-npm run dev                               # preview at http://localhost:4321
+npm install
+npm run dev                          # preview at http://localhost:4321
 ```
 
-For notebooks: `uv run jupyter lab`, and once per clone run `uv run nbstripout --install` so saved outputs are not committed.
+Raw downloads go in `data/raw/`:
+`nst-est2019-alldata.csv`, `NST-EST2025-ALLDATA.csv`, `cb_2024_us_state_20m.zip`.
 
-## Rules baked in
-
-- `data/raw/` is git-ignored. Only `data/processed/` is committed.
-- `.gitignore` also blocks `.env` files, keys, and files with "secret" or "credentials" in the name.
-- Before you push: check `data/processed/` and any notebook for keys or personal data. The repo and site are public.
-- Free only. The map uses OpenFreeMap, which needs no key.
+## How it is built
+Started from [wfrowe/project-template](https://github.com/wfrowe/project-template). Python (`src/build_data.py`) writes `population.csv`, `states.geojson` and `seam.csv`. The Astro page in `site/` reads them in the browser: Observable Plot for charts, MapLibre for the map.

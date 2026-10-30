@@ -1,12 +1,13 @@
-[project]
-name = "project-template"
+﻿[project]
+name = "us-population-shift"
 version = "0.1.0"
-description = "Template for a data project: Python for the data, Astro for the page."
+description = "US state population 2010-2025: trends, a map, and a snapshot for any year."
 readme = "README.md"
 # Native ARM64 Python 3.14 (also pinned in .python-version).
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "pandas>=3.1",
+    "pyshp>=3.1.6",
 ]
 
 [dependency-groups]

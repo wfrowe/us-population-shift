@@ -1,0 +1,644 @@
+---
+// One interactive explorer for state population, 2010-2025.
+//   Controls  : year slider (with play), what to show (population or growth), highest/lowest
+//   Map       : MapLibre, states shaded by the chosen value for the chosen year
+//   Ranking   : bars for the chosen year
+//   Trends    : lines for the states you pick (click states on the map or use the menu)
+//   Table     : every state for the chosen year, for screen readers and exact numbers
+// All three views read from the same two variables: the chosen year and the chosen metric.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const popUrl = `${base}/data/population.csv`;
+const shapeUrl = `${base}/data/states.geojson`;
+---
+
+<section class="explorer" data-pop={popUrl} data-shapes={shapeUrl}>
+	<div class="controls">
+		<fieldset>
+			<legend>Map and ranking show</legend>
+			<label><input type="radio" name="metric" value="population" checked /> Population</label>
+			<label><input type="radio" name="metric" value="growth_pct" /> Growth since 2010</label>
+		</fieldset>
+		<fieldset>
+			<legend>Ranking shows</legend>
+			<label><input type="radio" name="order" value="high" checked /> Highest 10</label>
+			<label><input type="radio" name="order" value="low" /> Lowest 10</label>
+		</fieldset>
+	</div>
+
+	<div class="year-row">
+		<button type="button" id="play">&#9654; Play</button>
+		<label for="year">Year: <output id="year-out" for="year">2025</output></label>
+		<input type="range" id="year" min="2010" max="2025" step="1" value="2025" />
+	</div>
+
+	<div class="grid">
+		<figure class="map-wrap">
+			<div id="map" class="map" role="region" aria-label="Map of US states shaded by population or growth. A table with the same numbers is below."></div>
+			<div id="legend" class="legend" aria-hidden="true"></div>
+			<div class="zoom-row">
+				Zoom to:
+				<button type="button" data-zoom="lower48">Lower 48</button>
+				<button type="button" data-zoom="ak">Alaska</button>
+				<button type="button" data-zoom="hi">Hawaii</button>
+			</div>
+			<figcaption>Hover for details. Click or tap a state to add it to the trend chart. Use two fingers or Ctrl + scroll to zoom.</figcaption>
+		</figure>
+		<figure class="rank-wrap">
+			<div id="bars" class="bars"></div>
+			<figcaption id="bars-cap"></figcaption>
+		</figure>
+	</div>
+
+	<h3>Trends</h3>
+	<div class="controls">
+		<fieldset>
+			<legend>Chart shows</legend>
+			<label><input type="radio" name="cmetric" value="growth_pct" checked /> Growth since 2010</label>
+			<label><input type="radio" name="cmetric" value="population" /> Population</label>
+		</fieldset>
+		<div class="picker">
+			<label for="add-state">Add a state</label>
+			<select id="add-state"></select>
+			<button type="button" id="reset">Reset</button>
+		</div>
+	</div>
+	<ul id="chips" class="chips" aria-label="States in the trend chart"></ul>
+	<div id="lines" class="chart"></div>
+	<p class="chart-note">
+		The dashed line marks a change in method: estimates from 2020 on use the 2020 Census as their starting point. See "Limits" below.
+	</p>
+
+	<details class="table-details">
+		<summary>Table: all states, <span id="table-year">2025</span></summary>
+		<div id="table" class="table-wrap"></div>
+	</details>
+
+	<p class="sr-only" id="live" aria-live="polite"></p>
+</section>
+
+<style is:global>
+	.explorer {
+		width: min(64rem, 100vw - 2.5rem);
+		margin-inline: calc(50% - min(32rem, 50vw - 1.25rem));
+		margin-block: 1.5rem;
+	}
+	.explorer fieldset {
+		border: 1px solid var(--line);
+		border-radius: 0.5rem;
+		padding: 0.4rem 0.9rem 0.6rem;
+		margin: 0;
+	}
+	.explorer legend {
+		font-size: 0.85rem;
+		color: var(--muted);
+		padding-inline: 0.3rem;
+	}
+	.explorer label {
+		margin-right: 1rem;
+		white-space: nowrap;
+	}
+	.explorer .controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem 1.25rem;
+		align-items: flex-end;
+		margin-bottom: 1rem;
+	}
+	.explorer .year-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+	}
+	.explorer .year-row input[type='range'] {
+		flex: 1;
+		min-width: 8rem;
+		accent-color: var(--accent);
+	}
+	.explorer output {
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+	}
+	.explorer button,
+	.explorer select {
+		font: inherit;
+		color: var(--text);
+		background: var(--card);
+		border: 1px solid var(--line);
+		border-radius: 0.4rem;
+		padding: 0.3rem 0.7rem;
+		cursor: pointer;
+	}
+	.explorer button:hover {
+		border-color: var(--accent);
+	}
+	.explorer button:focus-visible,
+	.explorer select:focus-visible,
+	.explorer input:focus-visible {
+		outline: 2px solid var(--accent);
+		outline-offset: 2px;
+	}
+	.explorer .grid {
+		display: grid;
+		gap: 1.5rem;
+		grid-template-columns: 1fr;
+		align-items: start;
+	}
+	@media (min-width: 52rem) {
+		.explorer .grid {
+			grid-template-columns: 3fr 2fr;
+		}
+	}
+	.explorer figure {
+		margin: 0;
+		min-width: 0;
+	}
+	.explorer .map {
+		height: 440px;
+		border: 1px solid var(--line);
+		border-radius: 0.5rem;
+		overflow: hidden;
+	}
+	.explorer .legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.9rem;
+		font-size: 0.8rem;
+		margin-top: 0.5rem;
+		color: var(--muted);
+	}
+	.explorer .legend span.swatch {
+		display: inline-block;
+		width: 0.9rem;
+		height: 0.9rem;
+		margin-right: 0.3rem;
+		vertical-align: -0.1rem;
+		border: 1px solid var(--line);
+	}
+	.explorer .zoom-row {
+		margin-top: 0.5rem;
+		font-size: 0.9rem;
+		color: var(--muted);
+	}
+	.explorer .zoom-row button {
+		padding: 0.1rem 0.5rem;
+		font-size: 0.85rem;
+		margin-left: 0.25rem;
+	}
+	.explorer figcaption,
+	.explorer .chart-note {
+		color: var(--muted);
+		font-size: 0.9rem;
+		margin-top: 0.5rem;
+	}
+	.explorer .picker {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+	.explorer .chips {
+		list-style: none;
+		padding: 0;
+		margin: 0 0 0.5rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+	}
+	.explorer .chips button {
+		border-radius: 1rem;
+		padding: 0.15rem 0.7rem;
+		font-size: 0.9rem;
+	}
+	.explorer .chart {
+		min-height: 380px;
+	}
+	.explorer .table-wrap {
+		max-height: 24rem;
+		overflow: auto;
+		margin-top: 0.5rem;
+		border: 1px solid var(--line);
+		border-radius: 0.5rem;
+	}
+	.explorer table {
+		border-collapse: collapse;
+		width: 100%;
+		font-size: 0.9rem;
+		font-variant-numeric: tabular-nums;
+	}
+	.explorer th,
+	.explorer td {
+		padding: 0.3rem 0.7rem;
+		text-align: right;
+		border-bottom: 1px solid var(--line);
+	}
+	.explorer th:nth-child(2),
+	.explorer td:nth-child(2) {
+		text-align: left;
+	}
+	.explorer thead th {
+		position: sticky;
+		top: 0;
+		background: var(--card);
+	}
+	.explorer .table-details {
+		margin-top: 1.5rem;
+	}
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+	/* Popup colors follow the page theme */
+	.maplibregl-popup-content {
+		background: var(--card);
+		color: var(--text);
+		font-size: 0.9rem;
+	}
+	.maplibregl-popup-tip {
+		display: none;
+	}
+</style>
+
+<script>
+	import * as Plot from '@observablehq/plot';
+	import { csvParse } from 'd3-dsv';
+	import * as maplibregl from 'maplibre-gl';
+	import 'maplibre-gl/dist/maplibre-gl.css';
+	// MapLibre does its tile work in a background file. "?url" lets the bundler ship it.
+	import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+
+	maplibregl.setWorkerUrl(workerUrl);
+
+	type Row = { fips: string; state: string; year: number; population: number; growth_pct: number; rank: number };
+	type Metric = 'population' | 'growth_pct';
+
+	const root = document.querySelector<HTMLElement>('.explorer')!;
+	const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+
+	// ---------- Settings you may want to change ----------
+	const FIRST_YEAR = 2010;
+	const LAST_YEAR = 2025;
+	const SEAM_X = 2019.5; // between the old and new Census estimate releases
+	const MAX_SELECTED = 6;
+	const DEFAULT_SELECTED = ['48', '06', '12', '36', '16', '54']; // TX, CA, FL, NY, ID, WV
+	const STYLE = 'https://tiles.openfreemap.org/styles/positron';
+
+	// Color steps. A value below the first break gets the first color, and so on.
+	// Population: light to dark blue. Growth: orange (shrinking) to purple (growing).
+	const RAMPS: Record<Metric, { colors: string[]; breaks: number[]; labels: string[] }> = {
+		population: {
+			colors: ['#eff3ff', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#084594'],
+			breaks: [1e6, 3e6, 5e6, 7e6, 1e7, 2e7],
+			labels: ['Under 1M', '1M to 3M', '3M to 5M', '5M to 7M', '7M to 10M', '10M to 20M', '20M or more'],
+		},
+		growth_pct: {
+			colors: ['#b35806', '#f1a340', '#d8daeb', '#b2abd2', '#8073ac', '#542788'],
+			breaks: [-2.5, 0, 5, 10, 20],
+			labels: ['Down more than 2.5%', 'Down 0 to 2.5%', 'Up 0 to 5%', 'Up 5 to 10%', 'Up 10 to 20%', 'Up 20% or more'],
+		},
+	};
+
+	// ---------- Formatting ----------
+	const fmtPop = (n: number) => n.toLocaleString('en-US');
+	const fmtPct = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(1)}%`;
+	const fmtMetric = (m: Metric, n: number) => (m === 'population' ? fmtPop(n) : fmtPct(n));
+	const fmtShort = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : `${Math.round(n / 1e3)}K`);
+
+	// ---------- State shared by every view ----------
+	let rows: Row[] = [];
+	let byYear = new Map<number, Row[]>();
+	let names = new Map<string, string>();
+	let year = LAST_YEAR;
+	let metric: Metric = 'population';
+	let order: 'high' | 'low' = 'high';
+	let chartMetric: Metric = 'growth_pct';
+	let selected: string[] = [...DEFAULT_SELECTED];
+	let timer: number | undefined;
+
+	const styles = { background: 'var(--bg)', color: 'var(--text)', fontSize: '13px' };
+	const yearRows = () => byYear.get(year) ?? [];
+
+	// ---------- Ranking bars ----------
+	function drawBars() {
+		const el = $('#bars');
+		const data = [...yearRows()]
+			.sort((a, b) => (order === 'high' ? b[metric] - a[metric] : a[metric] - b[metric]))
+			.slice(0, 10)
+			.map((r) => ({ ...r, label: `${r.state}  ${metric === 'population' ? fmtShort(r.population) : fmtPct(r.growth_pct)}` }));
+		const chosen = new Set(selected);
+		const chart = Plot.plot({
+			width: el.clientWidth,
+			height: 330,
+			marginLeft: 150,
+			style: styles,
+			x: { label: null, grid: true, tickFormat: metric === 'population' ? '~s' : (d: number) => `${d}%` },
+			y: { label: null },
+			marks: [
+				Plot.barX(data, {
+					x: metric,
+					y: 'label',
+					sort: { y: order === 'high' ? '-x' : 'x' },
+					fill: (d: Row) => (chosen.has(d.fips) ? 'var(--accent)' : 'var(--muted)'),
+				}),
+				Plot.ruleX([0]),
+			],
+		});
+		el.replaceChildren(chart);
+		const what = metric === 'population' ? 'population' : 'growth since 2010';
+		$('#bars-cap').textContent =
+			`${order === 'high' ? 'Highest' : 'Lowest'} 10 states by ${what}, ${year}. Blue bars are states in the trend chart.`;
+	}
+
+	// ---------- Trend lines ----------
+	function drawLines() {
+		const el = $('#lines');
+		const chosen = selected.map((f) => names.get(f)!);
+		const data = rows.filter((r) => selected.includes(r.fips));
+		const chart = Plot.plot({
+			width: el.clientWidth,
+			height: 380,
+			style: styles,
+			marginRight: 24,
+			x: { label: null, tickFormat: 'd', ticks: [2010, 2013, 2016, 2019, 2022, 2025], domain: [FIRST_YEAR, LAST_YEAR] },
+			y: {
+				label: chartMetric === 'population' ? 'Population' : 'Growth since 2010 (%)',
+				grid: true,
+				tickFormat: chartMetric === 'population' ? '~s' : (d: number) => `${d}%`,
+			},
+			color: { domain: chosen, legend: true },
+			marks: [
+				Plot.ruleX([SEAM_X], { stroke: 'var(--muted)', strokeDasharray: '4,4' }),
+				Plot.ruleX([year], { stroke: 'var(--accent)', strokeOpacity: 0.5 }),
+				Plot.ruleY([0]),
+				Plot.lineY(data, { x: 'year', y: chartMetric, stroke: 'state', strokeWidth: 2 }),
+				Plot.dot(data.filter((r) => r.year === year), { x: 'year', y: chartMetric, stroke: 'state', fill: 'var(--bg)', r: 4, strokeWidth: 2 }),
+				Plot.tip(data, Plot.pointer({ x: 'year', y: chartMetric, stroke: 'state' })),
+			],
+		});
+		el.replaceChildren(chart);
+	}
+
+	// ---------- Chips and menu ----------
+	function drawChips() {
+		const list = $('#chips');
+		list.replaceChildren(
+			...selected.map((fips) => {
+				const li = document.createElement('li');
+				const b = document.createElement('button');
+				b.type = 'button';
+				b.textContent = `${names.get(fips)} ✕`;
+				b.setAttribute('aria-label', `Remove ${names.get(fips)} from the chart`);
+				b.addEventListener('click', () => setSelected(selected.filter((f) => f !== fips)));
+				li.append(b);
+				return li;
+			}),
+		);
+		const menu = $<HTMLSelectElement>('#add-state');
+		const first = new Option('Choose a state…', '');
+		const others = [...names.entries()].filter(([f]) => !selected.includes(f)).sort((a, b) => a[1].localeCompare(b[1]));
+		menu.replaceChildren(first, ...others.map(([f, n]) => new Option(n, f)));
+	}
+
+	function setSelected(next: string[]) {
+		selected = next.slice(-MAX_SELECTED);
+		drawChips();
+		drawLines();
+		drawBars();
+		updateMapSelection();
+	}
+
+	function toggleState(fips: string) {
+		if (selected.includes(fips)) setSelected(selected.filter((f) => f !== fips));
+		else setSelected([...selected, fips]); // oldest drops off if over the limit
+	}
+
+	// ---------- Table ----------
+	function drawTable() {
+		$('#table-year').textContent = String(year);
+		const sorted = [...yearRows()].sort((a, b) => a.rank - b.rank);
+		const table = document.createElement('table');
+		const head = table.createTHead().insertRow();
+		for (const h of ['Rank', 'State', 'Population', 'Growth since 2010']) {
+			const th = document.createElement('th');
+			th.scope = 'col';
+			th.textContent = h;
+			head.append(th);
+		}
+		const body = table.createTBody();
+		for (const r of sorted) {
+			const tr = body.insertRow();
+			for (const v of [String(r.rank), r.state, fmtPop(r.population), fmtPct(r.growth_pct)]) tr.insertCell().textContent = v;
+		}
+		$('#table').replaceChildren(table);
+	}
+
+	// ---------- Map ----------
+	let map: maplibregl.Map | undefined;
+	let mapReady = false;
+	let hoverId: number | undefined;
+
+	const stepExpr = (m: Metric): any => {
+		const r = RAMPS[m];
+		const out: any[] = ['step', ['coalesce', ['feature-state', 'value'], 0], r.colors[0]];
+		r.breaks.forEach((b, i) => out.push(b, r.colors[i + 1]));
+		return out;
+	};
+
+	function drawLegend() {
+		const r = RAMPS[metric];
+		$('#legend').replaceChildren(
+			...r.colors.map((c, i) => {
+				const s = document.createElement('span');
+				const sw = document.createElement('span');
+				sw.className = 'swatch';
+				sw.style.background = c;
+				s.append(sw, r.labels[i]);
+				return s;
+			}),
+		);
+	}
+
+	function updateMap() {
+		drawLegend();
+		if (!map || !mapReady) return;
+		for (const r of yearRows()) map.setFeatureState({ source: 'states', id: Number(r.fips) }, { value: r[metric] });
+		map.setPaintProperty('fill', 'fill-color', stepExpr(metric));
+	}
+
+	function updateMapSelection() {
+		if (!map || !mapReady) return;
+		for (const fips of names.keys()) map.setFeatureState({ source: 'states', id: Number(fips) }, { selected: selected.includes(fips) });
+	}
+
+	async function startMap(shapes: any) {
+		const m = new maplibregl.Map({
+			container: $('#map'),
+			style: STYLE,
+			bounds: [-125, 24, -66, 50],
+			fitBoundsOptions: { padding: 10 },
+			cooperativeGestures: true,
+		});
+		map = m;
+		m.addControl(new maplibregl.NavigationControl({ showCompass: false }));
+
+		m.on('load', () => {
+			m.addSource('states', { type: 'geojson', data: shapes });
+			// Put the colors under the basemap's place names so labels stay readable.
+			const firstLabel = m.getStyle().layers.find((l) => l.type === 'symbol')?.id;
+			m.addLayer(
+				{ id: 'fill', type: 'fill', source: 'states', paint: { 'fill-color': stepExpr(metric), 'fill-opacity': 0.82 } },
+				firstLabel,
+			);
+			m.addLayer(
+				{
+					id: 'outline',
+					type: 'line',
+					source: 'states',
+					paint: {
+						'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ff9f1c', '#ffffff'],
+						'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2.5, ['boolean', ['feature-state', 'hover'], false], 2, 0.6],
+					},
+				},
+				firstLabel,
+			);
+			mapReady = true;
+			updateMap();
+			updateMapSelection();
+
+			const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 8 });
+			const show = (e: any) => {
+				const f = e.features?.[0];
+				if (!f) return;
+				m.getCanvas().style.cursor = 'pointer';
+				if (hoverId !== undefined) m.setFeatureState({ source: 'states', id: hoverId }, { hover: false });
+				hoverId = f.id as number;
+				m.setFeatureState({ source: 'states', id: hoverId }, { hover: true });
+				const r = yearRows().find((x) => x.fips === f.properties.fips);
+				if (!r) return;
+				const box = document.createElement('div');
+				const t = document.createElement('strong');
+				t.textContent = `${r.state}, ${year}`;
+				const l1 = document.createElement('div');
+				l1.textContent = `Population: ${fmtPop(r.population)} (rank ${r.rank})`;
+				const l2 = document.createElement('div');
+				l2.textContent = `Since 2010: ${fmtPct(r.growth_pct)}`;
+				box.append(t, l1, l2);
+				popup.setLngLat(e.lngLat).setDOMContent(box).addTo(m);
+			};
+			m.on('mousemove', 'fill', show);
+			m.on('mouseleave', 'fill', () => {
+				m.getCanvas().style.cursor = '';
+				if (hoverId !== undefined) m.setFeatureState({ source: 'states', id: hoverId }, { hover: false });
+				hoverId = undefined;
+				popup.remove();
+			});
+			m.on('click', 'fill', (e: any) => {
+				show(e);
+				const fips = e.features?.[0]?.properties?.fips;
+				if (fips) toggleState(fips);
+			});
+		});
+	}
+
+	const VIEWS: Record<string, [number, number, number, number]> = {
+		lower48: [-125, 24, -66, 50],
+		ak: [-170, 51, -129, 72],
+		hi: [-161, 18.5, -154, 22.5],
+	};
+
+	// ---------- Putting it together ----------
+	function refresh() {
+		$('#year-out').textContent = String(year);
+		updateMap();
+		drawBars();
+		drawLines();
+		drawTable();
+		const total = yearRows().reduce((s, r) => s + r.population, 0);
+		$('#live').textContent = `${year}. United States total ${fmtPop(total)}.`;
+	}
+
+	function setYear(y: number) {
+		year = y;
+		$<HTMLInputElement>('#year').value = String(y);
+		refresh();
+	}
+
+	function stop() {
+		window.clearInterval(timer);
+		timer = undefined;
+		$('#play').innerHTML = '&#9654; Play';
+	}
+
+	async function init() {
+		const [csv, shapes] = await Promise.all([
+			fetch(root.dataset.pop!).then((r) => r.text()),
+			fetch(root.dataset.shapes!).then((r) => r.json()),
+		]);
+		// Keep "fips" as text ("01"), so it matches the map shapes.
+		rows = csvParse(csv, (d: any) => ({
+			fips: d.fips,
+			state: d.state,
+			year: +d.year,
+			population: +d.population,
+			growth_pct: +d.growth_pct,
+			rank: +d.rank,
+		}));
+		for (const r of rows) {
+			names.set(r.fips, r.state);
+			(byYear.get(r.year) ?? byYear.set(r.year, []).get(r.year)!).push(r);
+		}
+
+		// Controls
+		root.querySelectorAll<HTMLInputElement>('input[name="metric"]').forEach((i) =>
+			i.addEventListener('change', () => { metric = i.value as Metric; refresh(); }),
+		);
+		root.querySelectorAll<HTMLInputElement>('input[name="order"]').forEach((i) =>
+			i.addEventListener('change', () => { order = i.value as 'high' | 'low'; drawBars(); }),
+		);
+		root.querySelectorAll<HTMLInputElement>('input[name="cmetric"]').forEach((i) =>
+			i.addEventListener('change', () => { chartMetric = i.value as Metric; drawLines(); }),
+		);
+		$<HTMLInputElement>('#year').addEventListener('input', (e) => { stop(); setYear(+(e.target as HTMLInputElement).value); });
+		$('#play').addEventListener('click', () => {
+			if (timer) return stop();
+			if (year >= LAST_YEAR) setYear(FIRST_YEAR);
+			$('#play').innerHTML = '&#10074;&#10074; Pause';
+			timer = window.setInterval(() => {
+				if (year >= LAST_YEAR) return stop();
+				setYear(year + 1);
+			}, 800);
+		});
+		$<HTMLSelectElement>('#add-state').addEventListener('change', (e) => {
+			const v = (e.target as HTMLSelectElement).value;
+			if (v) toggleState(v);
+		});
+		$('#reset').addEventListener('click', () => setSelected([...DEFAULT_SELECTED]));
+		root.querySelectorAll<HTMLButtonElement>('[data-zoom]').forEach((b) =>
+			b.addEventListener('click', () => {
+				const v = VIEWS[b.dataset.zoom!];
+				map?.fitBounds([[v[0], v[1]], [v[2], v[3]]], { padding: 10, duration: 800 });
+			}),
+		);
+
+		drawChips();
+		refresh();
+
+		// Redraw the charts when the width changes (rotating a phone, resizing the window).
+		let w = root.clientWidth;
+		new ResizeObserver(() => {
+			if (root.clientWidth !== w) { w = root.clientWidth; drawBars(); drawLines(); }
+		}).observe(root);
+
+		// Start the map when it scrolls into view.
+		const watcher = new IntersectionObserver((entries) => {
+			if (entries.some((e) => e.isIntersecting)) { watcher.disconnect(); startMap(shapes); }
+		});
+		watcher.observe($('#map'));
+	}
+
+	init();
+</script>
